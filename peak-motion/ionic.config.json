@@ -1,0 +1,7 @@
+{
+  "name": "Peak Motion",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "angular"
+}
