@@ -7,11 +7,11 @@
 </ion-header>
 
 <ion-content [fullscreen]="true">
-  <div id="map" style="height:100%;"></div>
+  <ion-fab class="location-btn">
+    <ion-fab-button (click)="getCurrentLocation()">
+      <ion-icon name="locate-outline"></ion-icon>
+    </ion-fab-button>
+  </ion-fab>
 
-   <p *ngIf="latitude && longitude">
-    Latitude: {{ latitude }} <br>
-    Longitude: {{ longitude }}
-  </p>
-  <ion-button (click)="getCurrentLocation()">Refresh Location</ion-button>
+  <div id="map" style="height:100%;"></div>
 </ion-content>
