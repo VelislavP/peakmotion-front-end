@@ -13,7 +13,7 @@ export class Tab3Page {
   uploadSuccess: boolean = false;
   isUploading: boolean = false;
   titleLatin: string = '';
-  titleBg: string = '';
+  titleEn: string = '';
   description: string = '';
 
   constructor(private photoService: PhotoService) {}
@@ -30,7 +30,7 @@ export class Tab3Page {
           this.uploadSuccess = true;
           this.uploadResponse = "Your plant photo has been uploaded and identified!";
           this.titleLatin = response.titleLatin || 'Unknown Species';
-          this.titleBg = response.titleBg || 'No Name Available';
+          this.titleEn = response.titleEn || 'No Name Available';
           this.description = response.description || 'No description found.';
         },
         error: (error) => {
@@ -51,7 +51,7 @@ export class Tab3Page {
     this.uploadResponse = null;
     this.uploadSuccess = false;
     this.titleLatin = '';
-    this.titleBg = '';
+    this.titleEn = '';
     this.description = '';
 
     this.captureAndUploadPhoto();
