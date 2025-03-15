@@ -50,7 +50,7 @@ export class PhotoService {
     const blob = this.base64ToBlob(photo.base64String!, 'image/jpeg');
     const file = new File([blob], 'photo.jpg', { type: 'image/jpeg' });
     formData.append('image', file);
-  
+
     return this.http.post(this.apiUrl, formData, {
       headers: { 'accept': 'application/json' },
       responseType: 'text'  // Change this if your API returns text
