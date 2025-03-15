@@ -12,34 +12,48 @@ export class Tab3Page {
   uploadResponse: string | null = null;
   uploadSuccess: boolean = false;
   isUploading: boolean = false;
+  titleLatin: string = '';
+  titleBg: string = '';
+  description: string = '';
 
-  constructor(private photoService: PhotoService) { }
+  constructor(private photoService: PhotoService) {}
 
   async captureAndUploadPhoto() {
     try {
-      this.isUploading = true;  // Show loader
+      this.isUploading = true;
 
       const photo = await this.photoService.takePhoto();
       this.capturedPhoto = 'data:image/jpeg;base64,' + photo.base64String;
 
-      this.photoService.uploadPhoto(photo).subscribe(
-        response => {
-          console.log('Photo uploaded successfully:', response);
-          this.uploadResponse = "Your plant photo has been uploaded and is being analyzed!";
+      this.photoService.uploadPhoto(photo).subscribe({
+        next: (response) => {
           this.uploadSuccess = true;
+          this.uploadResponse = "Your plant photo has been uploaded and identified!";
+          this.titleLatin = response.titleLatin || 'Unknown Species';
+          this.titleBg = response.titleBg || 'No Name Available';
+          this.description = response.description || 'No description found.';
         },
-        error => {
-          console.error('Error uploading photo:', error);
+        error: (error) => {
           this.uploadResponse = 'Upload failed! Please try again.';
           this.uploadSuccess = false;
         }
-      );
+      });
     } catch (error) {
-      console.error('Error in captureAndUploadPhoto:', error);
-      this.uploadResponse = 'Failed to capture photo!';
       this.uploadSuccess = false;
+      this.uploadResponse = 'Failed to capture photo!';
     } finally {
-      this.isUploading = false; // Hide loader
+      this.isUploading = false;
     }
+  }
+
+  resetAndCapturePhoto() {
+    this.capturedPhoto = null;
+    this.uploadResponse = null;
+    this.uploadSuccess = false;
+    this.titleLatin = '';
+    this.titleBg = '';
+    this.description = '';
+
+    this.captureAndUploadPhoto();
   }
 }

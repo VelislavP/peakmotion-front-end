@@ -11,6 +11,27 @@
     </ion-toolbar>
   </ion-header>
 
+    @if (uploadSuccess) {
+      <div class="floating-container">
+        <ion-card class="photo-card">
+          <ion-card-header>
+            <ion-card-title>{{ titleLatin }}</ion-card-title>
+            <ion-card-subtitle>{{ titleBg }}</ion-card-subtitle>
+          </ion-card-header>
+
+          <ion-card-content>
+            <ion-img class="image-result" [src]="capturedPhoto" alt="Captured Photo"></ion-img>
+            <p class="info-text ion-text-color-step-100">{{ description }}</p>
+          </ion-card-content>
+        </ion-card>
+
+        <ion-button class="reset-btn" expand="full" color="secondary" (click)="resetAndCapturePhoto()">
+          <ion-icon slot="start" name="refresh"></ion-icon>
+          Take Another Photo
+        </ion-button>
+      </div>
+    }
+
   @if (capturedPhoto) {
     <ion-card class="photo-card">
       <ion-card-header>
