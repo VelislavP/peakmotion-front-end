@@ -8,9 +8,10 @@ const config: CapacitorConfig = {
   plugins: {
     BackgroundRunner: {
       label: 'com.peakmotion.runner.check',
+      src: 'runners/runner.js',
       event: 'myCustomEvent',
       repeat: true,
-      interval: 30,
+      interval: 1,
       autoStart: true
     }
   }

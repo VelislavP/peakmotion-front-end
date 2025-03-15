@@ -1,36 +1,21 @@
-addEventListener('myCustomEvent', (resolve, reject, args) => {
-    console.log('do something to update the system here');
-    resolve();
-  });
-  
-  addEventListener('myCustomEventWithReturnData', (resolve, reject, args) => {
-    try {
-      console.log('accepted this data: ' + JSON.stringify(args.user));
-  
-      const updatedUser = args.user;
-      updatedUser.firstName = updatedUser.firstName + ' HELLO';
-      updatedUser.lastName = updatedUser.lastName + ' WORLD';
-  
-      resolve(updatedUser);
-    } catch (err) {
-      reject(err);
-    }
-  });
-  
-  addEventListener('remoteNotification', (resolve, reject, args) => {
-    try {
-      console.log('received silent push notification');
-  
-      CapacitorNotifications.schedule([
-        {
-          id: 100,
-          title: 'Enterprise Background Runner',
-          body: 'Received silent push notification',
-        },
-      ]);
-  
-      resolve();
-    } catch (err) {
-      reject();
-    }
-  });
+import { Capacitor } from "@capacitor/core";
+
+addEventListener('notificationTest', () => {
+  try {
+    let scheduleDate = new Date();
+    scheduleDate.setSeconds(scheduleDate.getSeconds() + 5);
+
+    CapacitorNotifications.schedule([
+      {
+        id: 42,
+        title: 'Background image',
+        body: 'This image comes from a background runner',
+        scheduleAt: scheduleDate
+      }
+    ]);
+    print('=================\nNotification sent')
+  } catch(error) {
+    reject(error);
+    print('=================\nNotification rejected')
+  }
+});
