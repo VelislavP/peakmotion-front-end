@@ -1,18 +1,18 @@
 <ion-header [translucent]="true">
   <ion-toolbar>
-    <ion-title>Plant Identification</ion-title>
+    <ion-title>Plant Lens</ion-title>
   </ion-toolbar>
 </ion-header>
 
 <ion-content [fullscreen]="true" class="ion-padding">
   <ion-header collapse="condense">
     <ion-toolbar>
-      <ion-title size="large">Identify a Plant</ion-title>
+      <ion-title size="large">Plant Lens</ion-title>
     </ion-toolbar>
   </ion-header>
 
   @if (capturedPhoto) {
-    <ion-card *ngIf="capturedPhoto" class="photo-card">
+    <ion-card class="photo-card">
       <ion-card-header>
         <ion-card-title>Captured Photo</ion-card-title>
       </ion-card-header>
@@ -56,12 +56,13 @@
     </div>
   }
 
-  <ion-alert
-    *ngIf="uploadResponse"
-    [isOpen]="uploadResponse !== null"
-    [header]="uploadSuccess ? 'Success' : 'Error'"
-    [message]="uploadResponse"
-    [buttons]="['OK']"
-    (didDismiss)="uploadResponse = null">
-  </ion-alert>
+  @if (uploadResponse) {
+    <ion-alert
+      [isOpen]="uploadResponse !== null"
+      [header]="uploadSuccess ? 'Success' : 'Error'"
+      [message]="uploadResponse"
+      [buttons]="['OK']"
+      (didDismiss)="uploadResponse = null">
+    </ion-alert>
+  }
 </ion-content>
