@@ -1,8 +1,6 @@
 <ion-header [translucent]="true">
   <ion-toolbar>
-    <ion-title>
-      Tab 3
-    </ion-title>
+    <ion-title>Tab 3</ion-title>
   </ion-toolbar>
 </ion-header>
 
@@ -15,11 +13,16 @@
 
   <app-explore-container name="Tab 3 page"></app-explore-container>
   
-  <!-- Button to trigger camera capture -->
+  <!-- Button to capture and upload photo -->
   <ion-button (click)="captureAndUploadPhoto()">Take Photo</ion-button>
   
-  <!-- Display the captured photo if available -->
+  <!-- Display captured photo -->
   <div *ngIf="capturedPhoto">
     <img [src]="capturedPhoto" alt="Captured Photo" style="width: 100%; max-width: 300px;"/>
+  </div>
+
+  <!-- Display the response message -->
+  <div *ngIf="uploadResponse">
+    <p>{{ uploadResponse }}</p>
   </div>
 </ion-content>
