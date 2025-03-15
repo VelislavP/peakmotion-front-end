@@ -113,7 +113,7 @@ export class Tab1Page implements AfterViewInit {
     });
 
     this.startTracking();
-    this.navigationService.startContinuousTracking(this.map, this.latitude, this.longitude);
+    this.navigationService.startContinuousTracking(this.map);
   }
 
   setManualLocation(lat: number, lng: number): void {
@@ -123,7 +123,7 @@ export class Tab1Page implements AfterViewInit {
       this.updatePosition({ latitude: lat, longitude: lng });
 
       if (this.map && this.latitude && this.longitude) {
-        // this.navigationService.loadNaturePOIs(this.map, this.latitude, this.longitude);
+        this.navigationService.position$.next({latitude: this.latitude, longitude: this.longitude});
       }
     }
   }
