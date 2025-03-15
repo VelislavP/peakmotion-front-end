@@ -1,8 +1,8 @@
 import { DestroyRef, inject, Injectable } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Geolocation, PermissionStatus, Position } from '@capacitor/geolocation';
-import { BehaviorSubject, catchError, from, map, Observable, Subject, switchMap, take, tap } from 'rxjs';
-import { Control, icon, Map, marker, Marker, tileLayer } from 'leaflet';
+import { Geolocation } from '@capacitor/geolocation';
+import { catchError,  from, interval, map, Observable, Subject, switchMap, take, tap, withLatestFrom } from 'rxjs';
+import { icon, Map, marker, Marker } from 'leaflet';
 import { CoordinatesPosition } from '../models/coordinates-position.model';
 
 @Injectable({
@@ -24,11 +24,14 @@ export class NavigationService {
 
   constructor() { }
 
-  startContinuousTracking(map: Map, latitude: number, longitude: number) {
-    this.intervalId = setInterval(() => {
-      this.loadNaturePOIs(map, latitude, longitude);
-      console.log("Continuous tracking!")
-    }, 10000); // 60000 ms = 1 minute
+  startContinuousTracking(map: Map) {
+    interval(10000).pipe(takeUntilDestroyed(this.destroyRef), withLatestFrom(this.position$)).subscribe(([_, position]) => {
+      if (position.latitude && position.longitude) {
+        this.loadNaturePOIs(map, position.latitude, position.longitude);
+      }
+
+      console.log("Continuous tracking!");
+    });
   }
 
   startTracking(): Observable<CoordinatesPosition> {
@@ -43,11 +46,13 @@ export class NavigationService {
           });
         }
       });
-    })
+    }).pipe(tap((position: CoordinatesPosition)=> {
+      this.position$.next(position);
+    }))
   }
 
   manualTracking(position: CoordinatesPosition): void {
-
+    this.position$.next(position);
   }
 
   loadNaturePOIs(map: Map, latitude: number, longitude: number): void {
