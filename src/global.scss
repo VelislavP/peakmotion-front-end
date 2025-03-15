@@ -35,3 +35,8 @@
 /* @import "@ionic/angular/css/palettes/dark.always.css"; */
 /* @import "@ionic/angular/css/palettes/dark.class.css"; */
 @import "@ionic/angular/css/palettes/dark.system.css";
+
+
+.leaflet-icon-shadow {
+  filter: drop-shadow(5px 5px 10px rgba(0, 0, 0, 0.5)); /* X, Y, Blur, Shadow Color */
+}
