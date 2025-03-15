@@ -5,14 +5,17 @@ const config: CapacitorConfig = {
   appId: 'com.peakmotion.runner',
   appName: 'Peak Motion',
   webDir: 'www',
+  server: {
+    androidScheme: "https",
+  },
   plugins: {
     BackgroundRunner: {
-      label: 'com.peakmotion.runner.check',
-      src: './services/notifications.service.ts',
-      event: 'myCustomEvent',
-      repeat: true,
-      interval: 1,
-      autoStart: true
+        label: "io.ionic.starter.peakmotion",
+        src: "runners/runner.js",
+        event: "notificationTest",
+        repeat: true,
+        interval: 1,
+        autoStart: true,
     },
   }
 };
