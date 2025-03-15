@@ -1,5 +1,7 @@
 import UIKit
 import Capacitor
+import BackgroundTasks
+import CapacitorBackgroundRunner
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -8,6 +10,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
+      BackgroundRunnerPlugin.registerBackgroundTask()
+      BackgroundRunnerPlugin.handleApplicationDidFinishLaunching(launchOptions: launchOptions)
         return true
     }
 
@@ -46,4 +50,20 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
     }
 
+  func application(
+      _ application: UIApplication,
+      didReceiveRemoteNotification userInfo: [AnyHashable : Any],
+      fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
+  ) {
+    print("Receive remote notification")
+    BackgroundRunnerPlugin.dispatchEvent(event: "Remote notification",
+                                         eventArgs: userInfo) { result in
+      switch result {
+      case .success:
+        completionHandler(.newData)
+      case .failure:
+        completionHandler(.failed)
+      }
+    }
+  }
 }
