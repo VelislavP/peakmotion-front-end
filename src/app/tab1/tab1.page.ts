@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Component, AfterViewInit, DestroyRef, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { Platform } from '@ionic/angular';
-import { from, Observable, of, switchMap, map, takeUntil, take, tap } from 'rxjs';
+import { from, Observable, of, switchMap, map, takeUntil, take, tap, catchError } from 'rxjs';
 import { Control, icon, Map, marker, Marker, tileLayer } from 'leaflet';
 import { Geolocation, PermissionStatus } from '@capacitor/geolocation';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -32,7 +32,7 @@ export class Tab1Page implements AfterViewInit {
     enableHighAccuracy: true
   };
 
-  constructor(public http: HttpClient, public plt: Platform, public router: Router) {}
+  constructor(public http: HttpClient, public plt: Platform, public router: Router) { }
 
   destroyRef = inject(DestroyRef);
 
@@ -139,7 +139,8 @@ export class Tab1Page implements AfterViewInit {
     ).subscribe();
   }
 
-  loadNaturePOIs() {
+
+  loadNaturePOIs(): void {
     if (!this.latitude || !this.longitude) {
       return;
     }
@@ -160,25 +161,33 @@ export class Tab1Page implements AfterViewInit {
     `;
     const url = `${overpassUrl}?data=${encodeURIComponent(query)}`;
 
-    fetch(url)
-      .then(response => response.json())
-      .then(data => {
-        data.elements.forEach((element: any) => {
-          marker([element.lat, element.lon], {
-            icon: icon({
-              iconUrl: 'https://cdn-icons-png.flaticon.com/512/1046/1046784.png', // Tree icon
-              iconSize: [30, 30],
-              iconAnchor: [15, 30],
-            })
-          })
-            .addTo(this.map)
-            .bindPopup(
-              `<b>${element.tags.name || 'Nature Spot'}</b><br>
-              Type: ${element.tags.natural || element.tags.leisure || element.tags.tourism || 'Unknown'}`
-            );
-        });
+    from(fetch(url)).pipe(
+      switchMap(response => from(response.json())),
+      switchMap(data => from(data.elements)),
+      catchError(error => {
+        console.error('Error fetching nature POIs:', error);
+        return [];
       })
-      .catch(error => console.error('Error fetching nature POIs:', error));
+    )
+      .subscribe((element: any) => {
+        const tag = element.tags.natural || element.tags.leisure || element.tags.tourism;
+        const iconUrl = this.getIconForType(tag); // Get the corresponding icon
+
+        marker([element.lat, element.lon], {
+          icon: icon({
+            iconUrl: iconUrl,
+            iconSize: [50, 50],
+            iconAnchor: [25, 50],
+            popupAnchor: [0, -30],
+            className: 'leaflet-icon-shadow'
+          })
+        })
+          .addTo(this.map)
+          .bindPopup(
+            `<b>${element.tags.name || 'Nature Spot'}</b><br>
+            <b>Type:</b> ${tag || 'Unknown'}`
+          );
+      });
   }
 
   setCurrentLocation(): void {
@@ -194,5 +203,19 @@ export class Tab1Page implements AfterViewInit {
         this.longitude = position.coords.longitude;
       })
     );
+  }
+
+  getIconForType(type: string): string {
+    const iconMap: { [key: string]: string } = {
+      'park': 'assets/icon/park.svg',
+      'wood': 'assets/icon/tree.svg',
+      'camp_site': 'assets/icon/camping_icon.svg',
+      'national_park': 'assets/icon/national_park.svg',
+      'hiking': 'assets/icon/hiking.svg',
+      'water': 'assets/icon/water.svg',
+      'peak': 'assets/icon/peak.svg',
+    };
+
+    return iconMap[type] || 'assets/icon/tree.svg'; // Default icon if type is unknown
   }
 }
