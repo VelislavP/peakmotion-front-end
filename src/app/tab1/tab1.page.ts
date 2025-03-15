@@ -3,7 +3,7 @@ import { Component, AfterViewInit, DestroyRef, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { Platform } from '@ionic/angular';
 import { from, Observable, of, switchMap, map, takeUntil, take, tap } from 'rxjs';
-import { GeoJSONOptions, icon, Map, marker, Marker, tileLayer } from 'leaflet';
+import { Control, GeoJSONOptions, icon, Map, marker, Marker, tileLayer } from 'leaflet';
 import { Geolocation, PermissionStatus } from '@capacitor/geolocation';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 interface Position {
@@ -29,6 +29,8 @@ export class Tab1Page implements AfterViewInit {
     timeout: 10000,
     enableHighAccuracy: true
   }
+
+  coordsControl!: Control;
 
   constructor(public http: HttpClient, public plt: Platform, public router: Router) { }
 
@@ -86,6 +88,19 @@ export class Tab1Page implements AfterViewInit {
       })
     }).addTo(this.map);
 
+    // Add a control box to display lat/lng
+    this.coordsControl = new Control({ position: 'bottomleft' });
+
+    this.coordsControl.onAdd = () => {
+      let div = document.createElement('div');
+      div.className = 'leaflet-bar leaflet-control';
+      div.style.backgroundColor = 'var(--background)';
+      div.style.padding = '5px';
+      div.innerHTML = `<b>Lat:</b> 33.6397 <br> <b>Lng:</b> -84.4304`;
+      return div;
+    };
+    this.coordsControl.addTo(this.map);
+
     this.startTracking();
   }
 
@@ -108,7 +123,14 @@ export class Tab1Page implements AfterViewInit {
         this.longitude = position.longitude;
 
         if (position.latitude && position.longitude) {
+          const div = this.coordsControl.getContainer();
+
+          if (div) {
+            div.innerHTML = `<b>Lat:</b> ${this.latitude.toFixed(5)} <br> <b>Lng:</b> ${this.longitude.toFixed(5)}`;
+          }
+
           this.userMarker.setLatLng([this.latitude, this.longitude]);
+
           this.map.setView([this.latitude, this.longitude], this.map.getZoom(), { animate: true });
         }
       })

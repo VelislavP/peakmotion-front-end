@@ -4,14 +4,14 @@
       Monti
     </ion-title>
   </ion-toolbar>
-
-  <p *ngIf="latitude && longitude">
-    Latitude: {{ latitude }} <br>
-    Longitude: {{ longitude }}
-  </p>
-  <ion-button (click)="getCurrentLocation()">Refresh Location</ion-button>
 </ion-header>
 
 <ion-content [fullscreen]="true">
+  <ion-fab class="location-btn">
+    <ion-fab-button (click)="getCurrentLocation()">
+      <ion-icon name="locate-outline"></ion-icon>
+    </ion-fab-button>
+  </ion-fab>
+
   <div id="map" style="height:100%;"></div>
 </ion-content>
