@@ -4,7 +4,7 @@
 <dict>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
-		<string>com.peakmotion.runner.check</string>
+		<string>io.ionic.starter.peakmotion</string>
 	</array>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
