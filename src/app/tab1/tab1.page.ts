@@ -4,12 +4,12 @@ import { Router } from '@angular/router';
 import { Platform } from '@ionic/angular';
 import { from, Observable, of, switchMap, map, takeUntil, take, tap, catchError } from 'rxjs';
 import { Control, icon, Map, marker, Marker, tileLayer } from 'leaflet';
-import { Geolocation, PermissionStatus } from '@capacitor/geolocation';
+import { Geolocation, PermissionStatus, Position } from '@capacitor/geolocation';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
-interface Position {
-  latitude: number;
-  longitude: number;
+interface CoordinatesPosition {
+  latitude: number | null;
+  longitude: number | null;
 }
 
 @Component({
@@ -37,7 +37,9 @@ export class Tab1Page implements AfterViewInit {
   destroyRef = inject(DestroyRef);
 
   ngAfterViewInit() {
-    this.checkPermissions().subscribe((status) => {
+    this.checkPermissions().pipe(
+      take(1)
+    ).subscribe((status) => {
       if (status === 'granted') {
         this.getCurrentLocation().pipe(
           tap(() => {
@@ -56,6 +58,7 @@ export class Tab1Page implements AfterViewInit {
     }
 
     return from(Geolocation.checkPermissions()).pipe(
+      take(1),
       map((status: PermissionStatus) => status.location),
       switchMap((permission) =>
         permission === 'granted' ? of(permission) : this.requestPermission()
@@ -107,7 +110,7 @@ export class Tab1Page implements AfterViewInit {
   }
 
   startTracking(): void {
-    new Observable<Position>(observer => {
+    new Observable<CoordinatesPosition>(observer => {
       Geolocation.watchPosition(this.options, (position, err) => {
         if (err) {
           observer.error(err);
@@ -120,25 +123,11 @@ export class Tab1Page implements AfterViewInit {
       });
     }).pipe(
       takeUntilDestroyed(this.destroyRef),
-      tap((position: Position) => {
-        this.latitude = position.latitude;
-        this.longitude = position.longitude;
-
-        if (position.latitude && position.longitude) {
-          const div = this.coordsControl.getContainer();
-
-          if (div) {
-            div.innerHTML = `<b>Lat:</b> ${this.latitude.toFixed(5)} <br> <b>Lng:</b> ${this.longitude.toFixed(5)}`;
-          }
-
-          this.userMarker.setLatLng([this.latitude, this.longitude]);
-
-          this.map.setView([this.latitude, this.longitude], this.map.getZoom(), { animate: true });
-        }
+      tap((position: CoordinatesPosition) => {
+        this.updatePosition(position);
       })
     ).subscribe();
   }
-
 
   loadNaturePOIs(): void {
     if (!this.latitude || !this.longitude) {
@@ -162,6 +151,7 @@ export class Tab1Page implements AfterViewInit {
     const url = `${overpassUrl}?data=${encodeURIComponent(query)}`;
 
     from(fetch(url)).pipe(
+      take(1),
       switchMap(response => from(response.json())),
       switchMap(data => from(data.elements)),
       catchError(error => {
@@ -194,13 +184,22 @@ export class Tab1Page implements AfterViewInit {
     this.getCurrentLocation().subscribe();
   }
 
-  getCurrentLocation(): Observable<any> {
+  getCurrentLocation(): Observable<CoordinatesPosition> {
+    this.updatePosition({
+      latitude: this.latitude,
+      longitude: this.longitude
+    });
+
     return from(Geolocation.getCurrentPosition(this.options)).pipe(
       take(1),
-      map(position => {
-        console.log(position);
-        this.latitude = position.coords.latitude;
-        this.longitude = position.coords.longitude;
+      map((position: Position) => {
+        return {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude
+        }
+      }),
+      tap((position: CoordinatesPosition) => {
+        this.updatePosition(position);
       })
     );
   }
@@ -217,5 +216,28 @@ export class Tab1Page implements AfterViewInit {
     };
 
     return iconMap[type] || 'assets/icon/tree.svg'; // Default icon if type is unknown
+  }
+
+  private updatePosition(position: CoordinatesPosition): void {
+    if (position.latitude && position.longitude) {
+      this.latitude = position.latitude;
+      this.longitude = position.longitude;
+
+      if (this.coordsControl) {
+        const div = this.coordsControl.getContainer();
+
+        if (div) {
+          div.innerHTML = `<b>Lat:</b> ${this.latitude.toFixed(5)} <br> <b>Lng:</b> ${this.longitude.toFixed(5)}`;
+        }
+      }
+
+      if (this.userMarker) {
+        this.userMarker.setLatLng([this.latitude, this.longitude]);
+      }
+
+      if (this.map) {
+        this.map.setView([this.latitude, this.longitude], this.map.getZoom(), { animate: true });
+      }
+    }
   }
 }
