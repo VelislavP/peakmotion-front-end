@@ -3,9 +3,10 @@ import { Component, AfterViewInit, DestroyRef, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { Platform } from '@ionic/angular';
 import { from, Observable, of, switchMap, map, takeUntil, take, tap } from 'rxjs';
-import { Control, GeoJSONOptions, icon, Map, marker, Marker, tileLayer } from 'leaflet';
+import { Control, icon, Map, marker, Marker, tileLayer } from 'leaflet';
 import { Geolocation, PermissionStatus } from '@capacitor/geolocation';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+
 interface Position {
   latitude: number;
   longitude: number;
@@ -23,25 +24,26 @@ export class Tab1Page implements AfterViewInit {
   userMarker!: Marker;
   latitude: number | null = null;
   longitude: number | null = null;
+  coordsControl!: Control;
 
   options: PositionOptions = {
     maximumAge: 3000,
     timeout: 10000,
     enableHighAccuracy: true
-  }
+  };
 
-  coordsControl!: Control;
-
-  constructor(public http: HttpClient, public plt: Platform, public router: Router) { }
+  constructor(public http: HttpClient, public plt: Platform, public router: Router) {}
 
   destroyRef = inject(DestroyRef);
 
   ngAfterViewInit() {
     this.checkPermissions().subscribe((status) => {
       if (status === 'granted') {
-        this.getCurrentLocation().pipe(tap(() => {
-          this.initMap();
-        })).subscribe();
+        this.getCurrentLocation().pipe(
+          tap(() => {
+            this.initMap();
+          })
+        ).subscribe();
       } else {
         console.warn('Location permission not granted.');
       }
@@ -49,16 +51,15 @@ export class Tab1Page implements AfterViewInit {
   }
 
   checkPermissions(): Observable<string> {
+    if (!this.plt.is('capacitor')) {
+      return of('granted'); // Web does not need explicit permission request
+    }
+
     return from(Geolocation.checkPermissions()).pipe(
-      tap((status) => {console.log(status)}),
       map((status: PermissionStatus) => status.location),
-      switchMap((permission) => {
-        if (permission === 'granted') {
-          return of(permission);
-        } else {
-          return this.requestPermission();
-        }
-      })
+      switchMap((permission) =>
+        permission === 'granted' ? of(permission) : this.requestPermission()
+      )
     );
   }
 
@@ -96,19 +97,20 @@ export class Tab1Page implements AfterViewInit {
       div.className = 'leaflet-bar leaflet-control';
       div.style.backgroundColor = 'var(--background)';
       div.style.padding = '5px';
-      div.innerHTML = `<b>Lat:</b> 33.6397 <br> <b>Lng:</b> -84.4304`;
+      div.innerHTML = `<b>Lat:</b> ${this.latitude?.toFixed(5)} <br> <b>Lng:</b> ${this.longitude?.toFixed(5)}`;
       return div;
     };
     this.coordsControl.addTo(this.map);
 
     this.startTracking();
+    this.loadNaturePOIs(); // Load nature POIs when map initializes
   }
 
   startTracking(): void {
     new Observable<Position>(observer => {
       Geolocation.watchPosition(this.options, (position, err) => {
         if (err) {
-          observer.error(err); // Emit error if something goes wrong
+          observer.error(err);
         } else if (position) {
           observer.next({
             latitude: position.coords.latitude,
@@ -137,6 +139,48 @@ export class Tab1Page implements AfterViewInit {
     ).subscribe();
   }
 
+  loadNaturePOIs() {
+    if (!this.latitude || !this.longitude) {
+      return;
+    }
+
+    const overpassUrl = 'https://overpass-api.de/api/interpreter';
+    const query = `
+      [out:json];
+      (
+        node["leisure"="park"](around:5000, ${this.latitude}, ${this.longitude});
+        node["natural"="wood"](around:5000, ${this.latitude}, ${this.longitude});
+        node["tourism"="camp_site"](around:5000, ${this.latitude}, ${this.longitude});
+        node["boundary"="national_park"](around:5000, ${this.latitude}, ${this.longitude});
+        node["route"="hiking"](around:5000, ${this.latitude}, ${this.longitude});
+        node["natural"="water"](around:5000, ${this.latitude}, ${this.longitude});
+        node["natural"="peak"](around:5000, ${this.latitude}, ${this.longitude});
+      );
+      out body;
+    `;
+    const url = `${overpassUrl}?data=${encodeURIComponent(query)}`;
+
+    fetch(url)
+      .then(response => response.json())
+      .then(data => {
+        data.elements.forEach((element: any) => {
+          marker([element.lat, element.lon], {
+            icon: icon({
+              iconUrl: 'https://cdn-icons-png.flaticon.com/512/1046/1046784.png', // Tree icon
+              iconSize: [30, 30],
+              iconAnchor: [15, 30],
+            })
+          })
+            .addTo(this.map)
+            .bindPopup(
+              `<b>${element.tags.name || 'Nature Spot'}</b><br>
+              Type: ${element.tags.natural || element.tags.leisure || element.tags.tourism || 'Unknown'}`
+            );
+        });
+      })
+      .catch(error => console.error('Error fetching nature POIs:', error));
+  }
+
   setCurrentLocation(): void {
     this.getCurrentLocation().subscribe();
   }
@@ -146,11 +190,9 @@ export class Tab1Page implements AfterViewInit {
       take(1),
       map(position => {
         console.log(position);
-
-        this.latitude = position.coords.latitude,
-        this.longitude = position.coords.longitude
-      }),
+        this.latitude = position.coords.latitude;
+        this.longitude = position.coords.longitude;
+      })
     );
   }
 }
-
