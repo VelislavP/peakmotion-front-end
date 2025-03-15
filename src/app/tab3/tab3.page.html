@@ -1,28 +1,89 @@
 <ion-header [translucent]="true">
   <ion-toolbar>
-    <ion-title>Tab 3</ion-title>
+    <ion-title>Plant Lens</ion-title>
   </ion-toolbar>
 </ion-header>
 
-<ion-content [fullscreen]="true">
+<ion-content [fullscreen]="true" class="ion-padding">
   <ion-header collapse="condense">
     <ion-toolbar>
-      <ion-title size="large">Tab 3</ion-title>
+      <ion-title size="large">Plant Lens</ion-title>
     </ion-toolbar>
   </ion-header>
 
-  <app-explore-container name="Tab 3 page"></app-explore-container>
-  
-  <!-- Button to capture and upload photo -->
-  <ion-button (click)="captureAndUploadPhoto()">Take Photo</ion-button>
-  
-  <!-- Display captured photo -->
-  <div *ngIf="capturedPhoto">
-    <img [src]="capturedPhoto" alt="Captured Photo" style="width: 100%; max-width: 300px;"/>
-  </div>
+    @if (uploadSuccess) {
+      <div class="floating-container">
+        <ion-card class="photo-card">
+          <ion-card-header>
+            <ion-card-title>{{ titleLatin }}</ion-card-title>
+            <ion-card-subtitle>{{ titleBg }}</ion-card-subtitle>
+          </ion-card-header>
 
-  <!-- Display the response message -->
-  <div *ngIf="uploadResponse">
-    <p>{{ uploadResponse }}</p>
-  </div>
+          <ion-card-content>
+            <ion-img class="image-result" [src]="capturedPhoto" alt="Captured Photo"></ion-img>
+            <p class="info-text ion-text-color-step-100">{{ description }}</p>
+          </ion-card-content>
+        </ion-card>
+
+        <ion-button class="reset-btn" expand="full" color="secondary" (click)="resetAndCapturePhoto()">
+          <ion-icon slot="start" name="refresh"></ion-icon>
+          Take Another Photo
+        </ion-button>
+      </div>
+    }
+
+  @if (capturedPhoto) {
+    <ion-card class="photo-card">
+      <ion-card-header>
+        <ion-card-title>Captured Photo</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-img [src]="capturedPhoto" alt="Captured Photo"></ion-img>
+      </ion-card-content>
+    </ion-card>
+  }
+
+  <ion-card>
+    <ion-card-header>
+      <ion-card-title>How to Take a Good Photo?</ion-card-title>
+    </ion-card-header>
+    <ion-card-content>
+      <ion-list>
+        <ion-item>
+          <ion-icon name="camera-outline" slot="start"></ion-icon>
+          <ion-label>Ensure good lighting</ion-label>
+        </ion-item>
+        <ion-item>
+          <ion-icon name="leaf-outline" slot="start"></ion-icon>
+          <ion-label>Focus on a single leaf or flower</ion-label>
+        </ion-item>
+        <ion-item>
+          <ion-icon name="contrast-outline" slot="start"></ion-icon>
+          <ion-label>Avoid blurry images</ion-label>
+        </ion-item>
+      </ion-list>
+    </ion-card-content>
+  </ion-card>
+
+  <ion-button expand="full" color="primary" (click)="captureAndUploadPhoto()" [disabled]="isUploading">
+    <ion-icon slot="start" name="camera"></ion-icon>
+    Take a Photo
+  </ion-button>
+
+  @if (isUploading) {
+    <div class="loading-overlay">
+      <ion-spinner name="crescent"></ion-spinner>
+      <p>Uploading... Please wait</p>
+    </div>
+  }
+
+  @if (uploadResponse) {
+    <ion-alert
+      [isOpen]="uploadResponse !== null"
+      [header]="uploadSuccess ? 'Success' : 'Error'"
+      [message]="uploadResponse"
+      [buttons]="['OK']"
+      (didDismiss)="uploadResponse = null">
+    </ion-alert>
+  }
 </ion-content>
