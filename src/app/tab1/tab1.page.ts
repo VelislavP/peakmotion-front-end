@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, AfterViewInit, DestroyRef, inject } from '@angular/core';
 import { Platform } from '@ionic/angular';
-import { from, Observable, of, switchMap, map, takeUntil, take, tap, catchError } from 'rxjs';
+import { from, Observable, of, switchMap, map, takeUntil, take, tap, catchError, BehaviorSubject } from 'rxjs';
 import { Control, icon, Map, marker, Marker, tileLayer } from 'leaflet';
 import { Geolocation, PermissionStatus, Position } from '@capacitor/geolocation';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -28,6 +28,9 @@ export class Tab1Page implements AfterViewInit {
     enableHighAccuracy: true
   };
 
+  manualOverride: boolean = true;
+  manualLocation: BehaviorSubject<CoordinatesPosition | null> = new BehaviorSubject<CoordinatesPosition | null>(null);
+
   constructor(public http: HttpClient, public plt: Platform, private navigationService: NavigationService) { }
 
   destroyRef = inject(DestroyRef);
@@ -38,9 +41,10 @@ export class Tab1Page implements AfterViewInit {
     ).subscribe((status) => {
       if (status === 'granted') {
         this.getCurrentLocation().pipe(
-          tap(() => {
+          tap((position: CoordinatesPosition) => {
+            this.updatePosition(position);
             this.initMap();
-          })
+          }),
         ).subscribe();
       } else {
         console.warn('Location permission not granted.');
@@ -101,8 +105,27 @@ export class Tab1Page implements AfterViewInit {
     };
     this.coordsControl.addTo(this.map);
 
+    this.map.on('click', (e: any) => {
+      if (this.manualOverride) {
+        this.setManualLocation(e.latlng.lat, e.latlng.lng);
+
+      }
+    });
+
     this.startTracking();
     this.navigationService.loadNaturePOIs(this.map, this.latitude, this.longitude);
+  }
+
+  setManualLocation(lat: number, lng: number): void {
+    this.manualLocation.next({ latitude: lat, longitude: lng });
+
+    if (this.manualOverride) {
+      this.updatePosition({ latitude: lat, longitude: lng });
+
+      if (this.map && this.latitude && this.longitude) {
+        this.navigationService.loadNaturePOIs(this.map, this.latitude, this.longitude);
+      }
+    }
   }
 
   startTracking(): void {
@@ -115,15 +138,15 @@ export class Tab1Page implements AfterViewInit {
   }
 
   setCurrentLocation(): void {
+     this.updatePosition({
+      latitude: this.latitude,
+      longitude: this.longitude
+     });
+
     this.getCurrentLocation().subscribe();
   }
 
   getCurrentLocation(): Observable<CoordinatesPosition> {
-    this.updatePosition({
-      latitude: this.latitude,
-      longitude: this.longitude
-    });
-
     return from(Geolocation.getCurrentPosition(this.options)).pipe(
       take(1),
       map((position: Position) => {
@@ -132,16 +155,20 @@ export class Tab1Page implements AfterViewInit {
           longitude: position.coords.longitude
         }
       }),
-      tap((position: CoordinatesPosition) => {
-        this.updatePosition(position);
-      })
     );
   }
 
   private updatePosition(position: CoordinatesPosition): void {
     if (position.latitude && position.longitude) {
-      this.latitude = position.latitude;
-      this.longitude = position.longitude;
+      if (this.manualOverride) {
+        const manualPos = this.manualLocation.getValue();
+
+        this.latitude = manualPos?.latitude || position.latitude;
+        this.longitude = manualPos?.longitude || position.longitude;
+      } else {
+        this.latitude = position.latitude;
+        this.longitude = position.longitude;
+      }
 
       if (!this.latitude || !this.longitude) {
         return;

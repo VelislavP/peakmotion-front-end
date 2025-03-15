@@ -17,6 +17,8 @@ export class NavigationService {
 
   destroyRef = inject(DestroyRef);
 
+  private poiMarkers: Marker[] = [];
+
   constructor() { }
 
   startTracking(): Observable<CoordinatesPosition> {
@@ -34,10 +36,13 @@ export class NavigationService {
     })
   }
 
+
   loadNaturePOIs(map: Map, latitude: number, longitude: number): void {
-    if (!latitude || !longitude) {
+    if (!latitude || !longitude || !map) {
       return;
     }
+
+    this.clearMap(map);
 
     const overpassUrl = 'https://overpass-api.de/api/interpreter';
     const query = `
@@ -66,9 +71,9 @@ export class NavigationService {
     )
       .subscribe((element: any) => {
         const tag = element.tags.natural || element.tags.leisure || element.tags.tourism;
-        const iconUrl = this.getIconForType(tag); // Get the corresponding icon
+        const iconUrl = this.getIconForType(tag);
 
-        marker([element.lat, element.lon], {
+        const poiMarker = marker([element.lat, element.lon], {
           icon: icon({
             iconUrl: iconUrl,
             iconSize: [50, 50],
@@ -80,12 +85,22 @@ export class NavigationService {
           .addTo(map)
           .bindPopup(
             `<b>${element.tags.name || 'Nature Spot'}</b><br>
-            <b>Type:</b> ${tag || 'Unknown'}`
+        <b>Type:</b> ${tag || 'Unknown'}`
           );
+
+        this.poiMarkers.push(poiMarker);
       });
   }
 
-  getIconForType(type: string): string {
+  private clearMap(map: Map): void {
+    this.poiMarkers.forEach(marker => {
+      map.removeLayer(marker);
+    });
+
+    this.poiMarkers = [];
+  }
+
+  private getIconForType(type: string): string {
     const iconMap: { [key: string]: string } = {
       'park': 'assets/icon/park.svg',
       'wood': 'assets/icon/tree.svg',
@@ -96,6 +111,6 @@ export class NavigationService {
       'peak': 'assets/icon/peak.svg',
     };
 
-    return iconMap[type] || 'assets/icon/tree.svg'; // Default icon if type is unknown
+    return iconMap[type] || 'assets/icon/tree.svg';
   }
 }
