@@ -13,7 +13,7 @@ const config: CapacitorConfig = {
       repeat: true,
       interval: 1,
       autoStart: true
-    }
+    },
   }
 };
 

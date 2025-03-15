@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { BackgroundRunner } from '@capacitor/background-runner'
 import { LocalNotifications } from '@capacitor/local-notifications';
+import { NotificationsService } from '../services/notifications.service';
 
 @Component({
   selector: 'app-tab2',
@@ -10,7 +11,7 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 })
 export class Tab2Page {
 
-  constructor() {
+  constructor(private notificationService: NotificationsService) {
     this.init()
   }
 
@@ -49,22 +50,9 @@ export class Tab2Page {
       details: {}
     });
   }
+
+  scheduleNotifications() {
+    this.notificationService.scheduleNotification();
+  }
 }
 
-async function scheduleNotifications() {
-  await LocalNotifications.schedule({
-    notifications: [
-      {
-        id: 1,
-        title: 'Repeating Notification',
-        body: 'This notification repeats every 5 seconds!',
-        schedule: {
-          repeats: true,
-          every: 'minute', // Use 'minute' for iOS
-          interval: 1,     // Works on Android, but not on iOS
-        },
-      },
-    ],
-  });
-  console.log('Notification scheduled');
-}
