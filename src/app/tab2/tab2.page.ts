@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { BackgroundRunner } from '@capacitor/background-runner'
 import { LocalNotifications } from '@capacitor/local-notifications';
-import { NotificationsService } from '../services/notifications.service';
+import { NotificationService } from '../services/notifications.service';
 
 @Component({
   selector: 'app-tab2',
@@ -11,48 +11,18 @@ import { NotificationsService } from '../services/notifications.service';
 })
 export class Tab2Page {
 
-  constructor(private notificationService: NotificationsService) {
-    this.init()
+  constructor(private notificationService: NotificationService) {}
+
+  scheduleTestNotification() {
+    this.notificationService.scheduleNotification('Test Title', 'This is a test notification', 5); // 5 seconds delay
   }
 
-  async init() {
-    try {
-      const permissions = await BackgroundRunner.requestPermissions({
-        apis: ['geolocation', 'notifications']
-      });
-      console.log('=================')
-      console.log(permissions);
-    } catch (error) {
-      console.log("Not Granted permissions");
-    }
+  scheduleDailyNotification() {
+    this.notificationService.scheduleRepeatingNotification('Daily Reminder', 'Check your app!', 8, 0); // 8:00 AM daily
   }
 
-  async testSave() {
-    const result = await BackgroundRunner.dispatchEvent({
-      label: 'com.peakmotion.runner.check',
-      event: 'testSave',
-      details: {}
-    });
-  }
-
-  async testLoad() {
-    const result = await BackgroundRunner.dispatchEvent({
-      label: 'com.peakmotion.runner.check',
-      event: 'testLoad',
-      details: {}
-    });
-  }
-
-  async testSchduleNotification() {
-    await BackgroundRunner.dispatchEvent({
-      label: 'com.peakmotion.runner.check',
-      event: 'notificationTest',
-      details: {}
-    });
-  }
-
-  scheduleNotifications() {
-    this.notificationService.scheduleNotification();
+  cancelTestNotification() {
+    this.notificationService.cancelNotification(12345); // Replace with actual ID
   }
 }
 

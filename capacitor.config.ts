@@ -8,7 +8,7 @@ const config: CapacitorConfig = {
   plugins: {
     BackgroundRunner: {
       label: 'com.peakmotion.runner.check',
-      src: 'runners/runner.js',
+      src: './services/notifications.service.ts',
       event: 'myCustomEvent',
       repeat: true,
       interval: 1,
