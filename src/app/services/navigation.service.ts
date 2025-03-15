@@ -34,7 +34,7 @@ export class NavigationService {
     });
   }
 
-  startTracking(): Observable<CoordinatesPosition> {
+  startTracking(manualOverride: boolean): Observable<CoordinatesPosition> {
     return new Observable<CoordinatesPosition>(observer => {
       Geolocation.watchPosition(this.options, (position, err) => {
         if (err) {
@@ -46,8 +46,10 @@ export class NavigationService {
           });
         }
       });
-    }).pipe(tap((position: CoordinatesPosition)=> {
-      this.position$.next(position);
+    }).pipe(tap((position: CoordinatesPosition) => {
+      if (!manualOverride) {
+        this.position$.next(position);
+      }
     }))
   }
 

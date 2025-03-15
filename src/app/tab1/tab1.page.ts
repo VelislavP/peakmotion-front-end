@@ -129,7 +129,7 @@ export class Tab1Page implements AfterViewInit {
   }
 
   startTracking(): void {
-    this.navigationService.startTracking().pipe(
+    this.navigationService.startTracking(this.manualOverride).pipe(
       takeUntilDestroyed(this.destroyRef),
       tap((position: CoordinatesPosition) => {
         this.updatePosition(position);
