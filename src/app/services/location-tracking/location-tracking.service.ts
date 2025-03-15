@@ -10,18 +10,18 @@ export class LocationTrackingService {
 
   constructor(private http: HttpClient) {}
 
-  startTracking() {
-    this.intervalId = setInterval(() => {
-      this.sendApiRequest();
-    }, 60000); // 60000 ms = 1 minute
-  }
+  // startTracking() {
+  //   this.intervalId = setInterval(() => {
+  //     this.sendApiRequest();
+  //   }, 60000); // 60000 ms = 1 minute
+  // }
 
-  stopTracking() {
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-      this.intervalId = null;
-    }
-  }
+  // stopTracking() {
+  //   if (this.intervalId) {
+  //     clearInterval(this.intervalId);
+  //     this.intervalId = null;
+  //   }
+  // }
 
   private sendApiRequest() {
     this.http.get(this.apiUrl).subscribe(

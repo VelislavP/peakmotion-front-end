@@ -1,7 +1,7 @@
 import { DestroyRef, inject, Injectable } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Geolocation, PermissionStatus, Position } from '@capacitor/geolocation';
-import { catchError, from, map, Observable, switchMap, take, tap } from 'rxjs';
+import { BehaviorSubject, catchError, from, map, Observable, Subject, switchMap, take, tap } from 'rxjs';
 import { Control, icon, Map, marker, Marker, tileLayer } from 'leaflet';
 import { CoordinatesPosition } from '../models/coordinates-position.model';
 
@@ -18,8 +18,18 @@ export class NavigationService {
   destroyRef = inject(DestroyRef);
 
   private poiMarkers: Marker[] = [];
+  private intervalId: any;
+
+  position$: Subject<CoordinatesPosition> = new Subject<CoordinatesPosition>();
 
   constructor() { }
+
+  startContinuousTracking(map: Map, latitude: number, longitude: number) {
+    this.intervalId = setInterval(() => {
+      this.loadNaturePOIs(map, latitude, longitude);
+      console.log("Continuous tracking!")
+    }, 10000); // 60000 ms = 1 minute
+  }
 
   startTracking(): Observable<CoordinatesPosition> {
     return new Observable<CoordinatesPosition>(observer => {
@@ -36,6 +46,9 @@ export class NavigationService {
     })
   }
 
+  manualTracking(position: CoordinatesPosition): void {
+
+  }
 
   loadNaturePOIs(map: Map, latitude: number, longitude: number): void {
     if (!latitude || !longitude || !map) {
