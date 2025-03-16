@@ -6,6 +6,7 @@ import { icon, Map, marker, Marker } from 'leaflet';
 import { CoordinatesPosition } from '../models/coordinates-position.model';
 import { HttpClient } from '@angular/common/http';
 import { NotificationService } from './notifications/notifications.service';
+import { Storage } from '@capacitor/storage';
 
 @Injectable({
   providedIn: 'root'
@@ -20,6 +21,7 @@ export class NavigationService {
   destroyRef = inject(DestroyRef);
 
   private poiMarkers: Marker[] = [];
+  private POI_IDS_KEY = "poiIds";
   private intervalId: any;
 
   position$: Subject<CoordinatesPosition> = new Subject<CoordinatesPosition>();
@@ -44,7 +46,6 @@ export class NavigationService {
         }
       });
   }
-
 
   private calculateDistance(pos1: CoordinatesPosition, pos2: CoordinatesPosition): number {
     if (!pos1.latitude || !pos1.longitude || !pos2.latitude || !pos2.longitude) return Infinity;
@@ -93,12 +94,11 @@ export class NavigationService {
     this.position$.next(position);
   }
 
-  loadNaturePOIs(map: Map, latitude: number, longitude: number): void {
-    if (!latitude || !longitude || !map) {
-      return;
-    }
 
-    this.clearMap(map);
+  loadNaturePOIs(tileMap: Map, latitude: number, longitude: number): void {
+    if (!latitude || !longitude || !tileMap) return;
+
+    this.clearMap(tileMap);
 
     const query = `
       [out:json];
@@ -116,35 +116,27 @@ export class NavigationService {
 
     const url = `${this.overpassUrl}?data=${encodeURIComponent(query)}`;
 
-    this.fetchPOIs(url).subscribe({
-      next: (elements: any) => {
-        elements.forEach((element: any) => {
-          const tag = element.tags.natural || element.tags.leisure || element.tags.tourism;
-          const iconUrl = this.getIconForType(tag);
-
-          const poiMarker = marker([element.lat, element.lon], {
-            icon: icon({
-              iconUrl: iconUrl,
-              iconSize: [50, 50],
-              iconAnchor: [25, 50],
-              popupAnchor: [0, -30],
-              className: 'leaflet-icon-shadow',
-            }),
-          })
-            .addTo(map)
-            .bindPopup(
-              `<b>${element.tags.name || 'Nature Spot'}</b><br>
-              <b>Type:</b> ${tag || 'Unknown'}`
-            );
-
-          this.poiMarkers.push(poiMarker);
-        });
-
+    from(Storage.get({ key: this.POI_IDS_KEY})).pipe(
+      map(({ value }) => value ? JSON.parse(value) : []),
+      switchMap((storedPOIIds: any[]) =>
+        this.fetchPOIs(url).pipe(
+          map(elements => elements.filter((element: any) => !storedPOIIds.includes(element.id))),
+          tap(newPOIs => this.addPOIsToMap(tileMap, newPOIs)),
+          switchMap(newPOIs => from(Storage.set({
+            key: 'poiIds',
+            value: JSON.stringify([...new Set([...storedPOIIds, ...newPOIs.map(poi => poi.id)])])
+          })))
+        )
+      ),
+      catchError(error => {
+        console.error('Error fetching nature POIs:', error);
+        return [];
+      })
+    ).subscribe(() => {
+      if (this.poiMarkers.length > 0) {
         this.notificationService.sendPOINotification(this.poiMarkers.length);
-      },
-      error: (error) => console.error('Error fetching nature POIs:', error)
-    }
-    );
+      }
+    });
   }
 
   private fetchPOIs(url: string): Observable<any[]> {
@@ -156,6 +148,30 @@ export class NavigationService {
         return [];
       })
     );
+  }
+
+  private addPOIsToMap(map: Map, newPOIs: any[]): void {
+    newPOIs.forEach(element => {
+      const tag = element.tags.natural || element.tags.leisure || element.tags.tourism;
+      const iconUrl = this.getIconForType(tag);
+
+      const poiMarker = marker([element.lat, element.lon], {
+        icon: icon({
+          iconUrl: iconUrl,
+          iconSize: [50, 50],
+          iconAnchor: [25, 50],
+          popupAnchor: [0, -30],
+          className: 'leaflet-icon-shadow',
+        }),
+      })
+        .addTo(map)
+        .bindPopup(
+          `<b>${element.tags.name || 'Nature Spot'}</b><br>
+        <b>Type:</b> ${tag || 'Unknown'}`
+        );
+
+      this.poiMarkers.push(poiMarker);
+    });
   }
 
   private clearMap(map: Map): void {
@@ -178,5 +194,20 @@ export class NavigationService {
     };
 
     return iconMap[type] || 'assets/icon/tree.svg';
+  }
+
+   async getStoredPOIIds(): Promise<number[]> {
+    const { value } = await Storage.get({ key: this.POI_IDS_KEY});
+    return value ? JSON.parse(value) : [];
+  }
+
+  // 📌 Store new POI IDs (only add new ones)
+  async storeNewPOIIds(newPOIIds: number[]): Promise<void> {
+    if (newPOIIds.length === 0) return;
+
+    const storedPOIIds = await this.getStoredPOIIds();
+    const updatedPOIIds = [...new Set([...storedPOIIds, ...newPOIIds])];
+
+    await Storage.set({ key: 'poiIds', value: JSON.stringify(updatedPOIIds) });
   }
 }
