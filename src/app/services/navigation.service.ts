@@ -1,12 +1,14 @@
 import { DestroyRef, inject, Injectable } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Geolocation } from '@capacitor/geolocation';
-import { catchError, distinctUntilChanged, from, interval, map, Observable, Subject, switchMap, take, tap, withLatestFrom } from 'rxjs';
+import { catchError, combineLatest, distinctUntilChanged, elementAt, from, interval, map, Observable, of, startWith, Subject, switchMap, take, tap, withLatestFrom } from 'rxjs';
 import { icon, Map, marker, Marker } from 'leaflet';
 import { CoordinatesPosition } from '../models/coordinates-position.model';
 import { HttpClient } from '@angular/common/http';
 import { NotificationService } from './notifications/notifications.service';
 import { Storage } from '@capacitor/storage';
+import { FactsService } from './facts.service';
+import { POI } from '../models/poi.model';
 
 @Injectable({
   providedIn: 'root'
@@ -27,7 +29,7 @@ export class NavigationService {
   position$: Subject<CoordinatesPosition> = new Subject<CoordinatesPosition>();
   private overpassUrl = 'https://overpass-api.de/api/interpreter';
 
-  constructor(private http: HttpClient, private notificationService: NotificationService) { }
+  constructor(private http: HttpClient, private notificationService: NotificationService, private factsService: FactsService) { }
 
   startContinuousTracking(map: Map) {
     const MIN_METERS = 100;
@@ -116,34 +118,71 @@ export class NavigationService {
 
     const url = `${this.overpassUrl}?data=${encodeURIComponent(query)}`;
 
-    from(Storage.get({ key: this.POI_IDS_KEY})).pipe(
-      map(({ value }) => value ? JSON.parse(value) : []),
+    from(Storage.get({ key: this.POI_IDS_KEY })).pipe(
+      map(({ value }) => (value ? JSON.parse(value) : [])), // Parse stored POI IDs
       switchMap((storedPOIIds: any[]) =>
-        this.fetchPOIs(url).pipe(
-          tap(newPOIs => this.addPOIsToMap(tileMap, newPOIs)),
-          map(elements => elements.filter((element: any) => !storedPOIIds.includes(element.id))),
+        combineLatest([this.fetchPOIs(url), this.fetchPOIsWithFacts().pipe(startWith([]))]).pipe(
+          map(([poisDef, poisFacts]) => {
+            if (!poisDef) {
+              console.error('poisDef is undefined');
+              return [];
+            }
+
+            if (!poisFacts) {
+              console.warn('poisFacts is undefined, returning poisDef only');
+              return poisDef;
+            }
+
+            return poisDef.map((poi: any) => {
+              const factEntry = poisFacts.find((p) => p.id === poi.id);
+              return { ...poi, fact: factEntry ? factEntry.fact : undefined };
+            });
+          }),
+          tap((newPOIs) => {
+            console.log('New POIs loaded:', newPOIs);
+            this.addPOIsToMap(tileMap, newPOIs);
+          }),
+          map((elements) =>
+            elements.filter((element: any) => !storedPOIIds.includes(element.id))
+          ),
           tap((elements) => {
             if (elements.length > 0) {
               this.notificationService.sendPOINotification(elements.length);
             }
           }),
-          switchMap(newPOIs => from(Storage.set({
-            key: 'poiIds',
-            value: JSON.stringify([...new Set([...storedPOIIds, ...newPOIs.map(poi => poi.id)])])
-          })))
+          tap((newPOIs) => {
+            if (newPOIs.length > 0) {
+              Storage.set({
+                key: this.POI_IDS_KEY,
+                value: JSON.stringify([...new Set([...storedPOIIds, ...newPOIs.map((poi) => poi.id)])]),
+              }).then(() => console.log('Storage updated with new POI IDs'));
+            }
+          })
         )
       ),
-      catchError(error => {
+      catchError((error) => {
         console.error('Error fetching nature POIs:', error);
-        return [];
+        return of([]); // Use `of([])` instead of `[]` to return a valid observable
       })
     ).subscribe();
   }
 
   private fetchPOIs(url: string): Observable<any[]> {
     return this.http.get<{ elements: any[] }>(url).pipe(
-      take(1), // Take only one response
       map((response) => response.elements || []),
+      tap((elementAt) => {
+        console.log(elementAt);
+      }),
+      catchError((error) => {
+        console.error('Error fetching nature POIs:', error);
+        return [];
+      })
+    );
+  }
+
+  private fetchPOIsWithFacts(): Observable<POI[]> {
+    return this.factsService.getPOIS().pipe(
+      map((response) => response || []),
       catchError((error) => {
         console.error('Error fetching nature POIs:', error);
         return [];
@@ -152,6 +191,8 @@ export class NavigationService {
   }
 
   private addPOIsToMap(map: Map, newPOIs: any[]): void {
+    console.log(newPOIs);
+
     newPOIs.forEach(element => {
       const tag = element.tags.natural || element.tags.leisure || element.tags.tourism;
       const iconUrl = this.getIconForType(tag);
@@ -168,7 +209,9 @@ export class NavigationService {
         .addTo(map)
         .bindPopup(
           `<b>${element.tags.name || 'Nature Spot'}</b><br>
-        <b>Type:</b> ${tag || 'Unknown'}`
+            <b>Type:</b> ${tag || 'Unknown'}
+            <b>${element.fact ? 'Fact: ' + element.fact : ""}</b>
+            `
         );
 
       this.poiMarkers.push(poiMarker);
