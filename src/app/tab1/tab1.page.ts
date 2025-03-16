@@ -108,11 +108,11 @@ export class Tab1Page implements AfterViewInit {
     this.map.on('click', (e: any) => {
       if (this.manualOverride) {
         this.setManualLocation(e.latlng.lat, e.latlng.lng);
-
       }
     });
 
     this.startTracking();
+    this.navigationService.loadNaturePOIs(this.map, this.latitude, this.longitude);
     this.navigationService.startContinuousTracking(this.map);
   }
 

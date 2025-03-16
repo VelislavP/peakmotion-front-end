@@ -26,7 +26,7 @@ export class NavigationService {
   private overpassUrl = 'https://overpass-api.de/api/interpreter';
   private MAP_STATE_KEY = "mapState";
 
-  constructor(private http: HttpClient, private notificationService: NotificationService, private storage: Storage) { }
+  constructor(private http: HttpClient, private notificationService: NotificationService) { }
 
   startContinuousTracking(map: Map) {
     const MIN_METERS = 100;
@@ -179,24 +179,5 @@ export class NavigationService {
     };
 
     return iconMap[type] || 'assets/icon/tree.svg';
-  }
-
-  saveMapState(map: Map) {
-    const center = map.getCenter();
-    const zoom = map.getZoom();
-
-    this.storage.setItem(this.MAP_STATE_KEY,
-      JSON.stringify({
-        lat: center.lat,
-        lon: center.lng,
-        zoom: zoom
-      })
-    );
-  }
-
-  async loadMapState() {
-    const value = this.storage.getItem(this.MAP_STATE_KEY);
-
-    return value ? JSON.parse(value) : { lat: 42.6440103, lon: 23.2970083, zoom: 13 };
   }
 }
