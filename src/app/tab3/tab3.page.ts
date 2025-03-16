@@ -13,6 +13,7 @@ export class Tab3Page {
   capturedPhoto: string | null = null;
   uploadResponse: string | null = null;
   uploadSuccess: boolean = false;
+  aiProcessing: boolean = false;
   isUploading: boolean = false;
   titleLatin: string = '';
   titleEn: string = '';
@@ -27,27 +28,30 @@ export class Tab3Page {
       const photo = await this.photoService.takePhoto();
       this.capturedPhoto = 'data:image/jpeg;base64,' + photo.base64String;
 
+      this.aiProcessing = true;
+
       this.photoService.uploadPhoto(photo).subscribe({
         next: async (response) => {
-          const parsedResponse = JSON.parse(response)
+          const parsedResponse = JSON.
+          parse(response)
           this.uploadSuccess = true;
+          this.aiProcessing = false;
           this.uploadResponse = "Your plant photo has been uploaded and identified!";
           this.titleLatin = parsedResponse.titleLatin || 'Unknown Species';
           this.titleEn = parsedResponse.titleEn || 'No Name Available';
           this.description = parsedResponse.description || 'No description found.';
-          this.isUploading = false;
           await this.presentModal();
         },
         error: (error) => {
           console.log(error)
           this.uploadResponse = 'Upload failed! Please try again.';
           this.uploadSuccess = false;
-          this.isUploading = false;
         }
       });
     } catch (error) {
       this.uploadSuccess = false;
       this.uploadResponse = 'Failed to capture photo!';
+    } finally {
       this.isUploading = false;
     }
   }

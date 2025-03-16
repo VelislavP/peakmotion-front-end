@@ -56,6 +56,13 @@
     </div>
   }
 
+  @if (aiProcessing) {
+    <div class="loading-overlay">
+      <ion-spinner name="crescent"></ion-spinner>
+      <p>Monti is thinking... Please wait</p>
+    </div>
+  }
+
   @if (uploadResponse) {
     <ion-alert
       [isOpen]="uploadResponse !== null"
