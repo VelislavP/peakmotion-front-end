@@ -102,6 +102,14 @@ export class NotificationService {
     }
   }
 
+  sendPOINotification(numberOfLocations: number) {
+    const maxNumber = 10;
+    const notificationTitle = `You have ${numberOfLocations < maxNumber ? numberOfLocations : maxNumber + '+'} new interesting locations!`
+    const notificationDescription = `Open the app to view what's cool about them!`;
+
+    this.scheduleNotification(notificationTitle, notificationDescription, 1);
+  }
+
   // Handle received notification (e.g., log or update app state)
   private handleNotificationReceived(notification: LocalNotificationSchema) {
     // Add logic here, e.g., update UI or log to a service

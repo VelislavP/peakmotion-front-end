@@ -1,9 +1,11 @@
 import { DestroyRef, inject, Injectable } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Geolocation } from '@capacitor/geolocation';
-import { catchError,  from, interval, map, Observable, Subject, switchMap, take, tap, withLatestFrom } from 'rxjs';
+import { catchError, distinctUntilChanged, from, interval, map, Observable, Subject, switchMap, take, tap, withLatestFrom } from 'rxjs';
 import { icon, Map, marker, Marker } from 'leaflet';
 import { CoordinatesPosition } from '../models/coordinates-position.model';
+import { HttpClient } from '@angular/common/http';
+import { NotificationService } from './notifications/notifications.service';
 
 @Injectable({
   providedIn: 'root'
@@ -21,17 +23,52 @@ export class NavigationService {
   private intervalId: any;
 
   position$: Subject<CoordinatesPosition> = new Subject<CoordinatesPosition>();
+  private overpassUrl = 'https://overpass-api.de/api/interpreter';
+  private MAP_STATE_KEY = "mapState";
 
-  constructor() { }
+  constructor(private http: HttpClient, private notificationService: NotificationService, private storage: Storage) { }
 
   startContinuousTracking(map: Map) {
-    interval(10000).pipe(takeUntilDestroyed(this.destroyRef), withLatestFrom(this.position$)).subscribe(([_, position]) => {
-      if (position.latitude && position.longitude) {
-        this.loadNaturePOIs(map, position.latitude, position.longitude);
-      }
+    const MIN_METERS = 100;
 
-      console.log("Continuous tracking!");
-    });
+    this.position$
+      .pipe(
+        takeUntilDestroyed(this.destroyRef), // Stops tracking when component is destroyed
+        distinctUntilChanged((prev, curr) => {
+          if (!prev || !curr) return false;
+          return this.calculateDistance(prev, curr) < MIN_METERS; // API call only if movement ≥ 100m
+        })
+      )
+      .subscribe((position) => {
+        if (position.latitude && position.longitude) {
+          this.loadNaturePOIs(map, position.latitude, position.longitude);
+        }
+      });
+  }
+
+
+  private calculateDistance(pos1: CoordinatesPosition, pos2: CoordinatesPosition): number {
+    if (!pos1.latitude || !pos1.longitude || !pos2.latitude || !pos2.longitude) return Infinity;
+
+    const R = 6371000; // Earth radius in meters
+    const lat1 = this.degToRad(pos1.latitude);
+    const lon1 = this.degToRad(pos1.longitude);
+    const lat2 = this.degToRad(pos2.latitude);
+    const lon2 = this.degToRad(pos2.longitude);
+
+    const dLat = lat2 - lat1;
+    const dLon = lon2 - lon1;
+
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // Distance in meters
+  }
+
+  private degToRad(degrees: number): number {
+    return degrees * (Math.PI / 180);
   }
 
   startTracking(manualOverride: boolean): Observable<CoordinatesPosition> {
@@ -64,7 +101,6 @@ export class NavigationService {
 
     this.clearMap(map);
 
-    const overpassUrl = 'https://overpass-api.de/api/interpreter';
     const query = `
       [out:json];
       (
@@ -78,38 +114,49 @@ export class NavigationService {
       );
       out body;
     `;
-    const url = `${overpassUrl}?data=${encodeURIComponent(query)}`;
 
-    from(fetch(url)).pipe(
-      take(1),
-      switchMap(response => from(response.json())),
-      switchMap(data => from(data.elements)),
-      catchError(error => {
+    const url = `${this.overpassUrl}?data=${encodeURIComponent(query)}`;
+
+    this.fetchPOIs(url).subscribe({
+      next: (elements: any) => {
+        elements.forEach((element: any) => {
+          const tag = element.tags.natural || element.tags.leisure || element.tags.tourism;
+          const iconUrl = this.getIconForType(tag);
+
+          const poiMarker = marker([element.lat, element.lon], {
+            icon: icon({
+              iconUrl: iconUrl,
+              iconSize: [50, 50],
+              iconAnchor: [25, 50],
+              popupAnchor: [0, -30],
+              className: 'leaflet-icon-shadow',
+            }),
+          })
+            .addTo(map)
+            .bindPopup(
+              `<b>${element.tags.name || 'Nature Spot'}</b><br>
+              <b>Type:</b> ${tag || 'Unknown'}`
+            );
+
+          this.poiMarkers.push(poiMarker);
+        });
+
+        this.notificationService.sendPOINotification(this.poiMarkers.length);
+      },
+      error: (error) => console.error('Error fetching nature POIs:', error)
+    }
+    );
+  }
+
+  private fetchPOIs(url: string): Observable<any[]> {
+    return this.http.get<{ elements: any[] }>(url).pipe(
+      take(1), // Take only one response
+      map((response) => response.elements || []),
+      catchError((error) => {
         console.error('Error fetching nature POIs:', error);
         return [];
       })
-    )
-      .subscribe((element: any) => {
-        const tag = element.tags.natural || element.tags.leisure || element.tags.tourism;
-        const iconUrl = this.getIconForType(tag);
-
-        const poiMarker = marker([element.lat, element.lon], {
-          icon: icon({
-            iconUrl: iconUrl,
-            iconSize: [50, 50],
-            iconAnchor: [25, 50],
-            popupAnchor: [0, -30],
-            className: 'leaflet-icon-shadow'
-          })
-        })
-          .addTo(map)
-          .bindPopup(
-            `<b>${element.tags.name || 'Nature Spot'}</b><br>
-        <b>Type:</b> ${tag || 'Unknown'}`
-          );
-
-        this.poiMarkers.push(poiMarker);
-      });
+    );
   }
 
   private clearMap(map: Map): void {
@@ -132,5 +179,24 @@ export class NavigationService {
     };
 
     return iconMap[type] || 'assets/icon/tree.svg';
+  }
+
+  saveMapState(map: Map) {
+    const center = map.getCenter();
+    const zoom = map.getZoom();
+
+    this.storage.setItem(this.MAP_STATE_KEY,
+      JSON.stringify({
+        lat: center.lat,
+        lon: center.lng,
+        zoom: zoom
+      })
+    );
+  }
+
+  async loadMapState() {
+    const value = this.storage.getItem(this.MAP_STATE_KEY);
+
+    return value ? JSON.parse(value) : { lat: 42.6440103, lon: 23.2970083, zoom: 13 };
   }
 }
