@@ -36,6 +36,7 @@ export class Tab3Page {
           this.isUploading = false;
         },
         error: (error) => {
+          console.log(error)
           this.uploadResponse = 'Upload failed! Please try again.';
           this.uploadSuccess = false;
           this.isUploading = false;

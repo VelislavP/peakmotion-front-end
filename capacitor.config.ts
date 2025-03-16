@@ -7,6 +7,7 @@ const config: CapacitorConfig = {
   webDir: 'www',
   server: {
     androidScheme: "https",
+    allowNavigation: ["*"]
   },
   plugins: {
     BackgroundRunner: {
