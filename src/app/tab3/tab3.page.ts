@@ -27,21 +27,23 @@ export class Tab3Page {
 
       this.photoService.uploadPhoto(photo).subscribe({
         next: (response) => {
+          const parsedResponse = JSON.parse(response)
           this.uploadSuccess = true;
           this.uploadResponse = "Your plant photo has been uploaded and identified!";
-          this.titleLatin = response.titleLatin || 'Unknown Species';
-          this.titleEn = response.titleEn || 'No Name Available';
-          this.description = response.description || 'No description found.';
+          this.titleLatin = parsedResponse.titleLatin || 'Unknown Species';
+          this.titleEn = parsedResponse.titleEn || 'No Name Available';
+          this.description = parsedResponse.description || 'No description found.';
+          this.isUploading = false;
         },
         error: (error) => {
           this.uploadResponse = 'Upload failed! Please try again.';
           this.uploadSuccess = false;
+          this.isUploading = false;
         }
       });
     } catch (error) {
       this.uploadSuccess = false;
       this.uploadResponse = 'Failed to capture photo!';
-    } finally {
       this.isUploading = false;
     }
   }
