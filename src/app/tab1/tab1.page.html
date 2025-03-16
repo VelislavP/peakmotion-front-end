@@ -14,4 +14,10 @@
   </ion-fab>
 
   <div id="map" style="height:100%;"></div>
+
+  @if (mapProcessing) {
+    <div class="loading-overlay">
+      <ion-text>Monti is loading... Please wait</ion-text>
+    </div>
+  }
 </ion-content>

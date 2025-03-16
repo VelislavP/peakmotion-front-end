@@ -35,6 +35,8 @@ export class Tab1Page implements AfterViewInit {
   manualOverride: boolean = true;
   manualLocation: BehaviorSubject<CoordinatesPosition | null> = new BehaviorSubject<CoordinatesPosition | null>(null);
 
+  mapProcessing = true;
+
   constructor(public http: HttpClient, public plt: Platform, private navigationService: NavigationService) { }
 
   destroyRef = inject(DestroyRef);
@@ -120,6 +122,10 @@ export class Tab1Page implements AfterViewInit {
     }
 
     this.map = new TileMap('map').setView([this.latitude, this.longitude], 15, { animate: true });
+
+    this.map.whenReady(() => {
+      this.mapProcessing = false;
+    });
 
     tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
