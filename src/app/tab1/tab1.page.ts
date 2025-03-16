@@ -2,11 +2,12 @@ import { HttpClient } from '@angular/common/http';
 import { Component, AfterViewInit, DestroyRef, inject } from '@angular/core';
 import { Platform } from '@ionic/angular';
 import { from, Observable, of, switchMap, map, takeUntil, take, tap, catchError, BehaviorSubject } from 'rxjs';
-import { Control, icon, Map, marker, Marker, tileLayer } from 'leaflet';
+import { Control, icon, Map as TileMap, marker, Marker, TileLayer, tileLayer } from 'leaflet';
 import { Geolocation, PermissionStatus, Position } from '@capacitor/geolocation';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationService } from '../services/navigation.service';
 import { CoordinatesPosition } from '../models/coordinates-position.model';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 
 @Component({
   selector: 'app-tab1',
@@ -16,7 +17,10 @@ import { CoordinatesPosition } from '../models/coordinates-position.model';
   providers: [HttpClient]
 })
 export class Tab1Page implements AfterViewInit {
-  map!: Map;
+  map!: TileMap;
+  offlineTileLayer!: TileLayer;
+  tileCache = new Map<string, string | Blob | null>();
+
   userMarker!: Marker;
   latitude: number | null = null;
   longitude: number | null = null;
@@ -34,6 +38,7 @@ export class Tab1Page implements AfterViewInit {
   constructor(public http: HttpClient, public plt: Platform, private navigationService: NavigationService) { }
 
   destroyRef = inject(DestroyRef);
+  private MAP_STATE_KEY = "mapState";
 
   ngAfterViewInit() {
     this.checkPermissions().pipe(
@@ -50,6 +55,43 @@ export class Tab1Page implements AfterViewInit {
         console.warn('Location permission not granted.');
       }
     });
+  }
+
+  manageOfflineMap(): void {
+    // Use an in-memory tile cache to make `getTileUrl` synchronous
+  this.tileCache = new Map<string, string>();
+
+  this.offlineTileLayer = tileLayer('', {
+    maxZoom: 19
+  });
+
+  this.offlineTileLayer.getTileUrl = (coords) => {
+    const tileUrl = `https://{s}.tile.openstreetmap.org/${coords.z}/${coords.x}/${coords.y}.png`;
+
+    // Check if tile exists in in-memory cache first
+    if (this.tileCache.has(tileUrl)) {
+      return this.tileCache.get(tileUrl) as string;
+    }
+
+    // If not in cache, return original tile and cache it asynchronously
+    this.loadCachedTile(tileUrl).then((cachedTile) => {
+      if (cachedTile) {
+        this.tileCache.set(tileUrl, cachedTile);
+      }
+    });
+
+    console.log(tileUrl);
+
+    return tileUrl;
+  };
+
+  this.offlineTileLayer.addTo(this.map);
+
+  // Hook into tile load event to store tiles
+  this.offlineTileLayer.on('tileload', async (event: any) => {
+    const tileUrl = event.tile.src;
+    await this.cacheTile(tileUrl);
+  });
   }
 
   checkPermissions(): Observable<string> {
@@ -77,7 +119,7 @@ export class Tab1Page implements AfterViewInit {
       return;
     }
 
-    this.map = new Map('map').setView([this.latitude, this.longitude], 15, { animate: true });
+    this.map = new TileMap('map').setView([this.latitude, this.longitude], 15, { animate: true });
 
     tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -108,11 +150,11 @@ export class Tab1Page implements AfterViewInit {
     this.map.on('click', (e: any) => {
       if (this.manualOverride) {
         this.setManualLocation(e.latlng.lat, e.latlng.lng);
-
       }
     });
 
     this.startTracking();
+    this.navigationService.loadNaturePOIs(this.map, this.latitude, this.longitude);
     this.navigationService.startContinuousTracking(this.map);
   }
 
@@ -156,6 +198,48 @@ export class Tab1Page implements AfterViewInit {
         }
       }),
     );
+  }
+
+  async cacheTile(tileUrl: string) {
+    try {
+      const response = await fetch(tileUrl);
+      const blob = await response.blob();
+      const base64Data = await this.blobToBase64(blob);
+
+      const fileName = tileUrl.replace(/[^\w]/g, ''); // Normalize filename
+      await Filesystem.writeFile({
+        path: `tiles/${fileName}.txt`,
+        data: base64Data,
+        directory: Directory.Data
+      });
+
+      console.log(`Tile cached: ${fileName}`);
+    } catch (error) {
+      console.error('Error caching tile:', error);
+    }
+  }
+
+  // 📌 Load Cached Tile (If Available)
+  async loadCachedTile(tileUrl: string): Promise<string | Blob | null> {
+    try {
+      const fileName = tileUrl.replace(/[^\w]/g, '');
+      const result = await Filesystem.readFile({
+        path: `tiles/${fileName}.txt`,
+        directory: Directory.Data
+      });
+      return result.data; // Base64 Image
+    } catch (error) {
+      return null; // No cached tile found
+    }
+  }
+
+  async blobToBase64(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = () => resolve(reader.result as string);
+      reader.readAsDataURL(blob);
+    });
   }
 
   private updatePosition(position: CoordinatesPosition): void {

@@ -1,6 +1,4 @@
 import { Component } from '@angular/core';
-import { BackgroundRunner } from '@capacitor/background-runner'
-import { LocalNotifications } from '@capacitor/local-notifications';
 import { NotificationService } from '../services/notifications/notifications.service';
 
 @Component({
@@ -11,7 +9,7 @@ import { NotificationService } from '../services/notifications/notifications.ser
 })
 export class Tab2Page {
 
-  constructor(private notificationService: NotificationService) {}
+  constructor(private notificationService: NotificationService) { }
 
   scheduleTestNotification() {
     this.notificationService.scheduleNotification('Test Title', 'This is a test notification', 1);

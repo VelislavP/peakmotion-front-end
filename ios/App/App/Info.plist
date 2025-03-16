@@ -62,5 +62,19 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+
+  <key>NSPhotoLibraryUsageDescription</key>
+  <string>App needs access to storage to cache map tiles.</string>
+
+  <key>NSPhotoLibraryAddUsageDescription</key>
+  <string>App needs to store map tiles for offline use.</string>
+
+  <key>LSSupportsOpeningDocumentsInPlace</key>
+  <true/>
+
+  <key>UIBackgroundModes</key>
+  <array>
+      <string>fetch</string>
+  </array>
 </dict>
 </plist>
