@@ -120,8 +120,13 @@ export class NavigationService {
       map(({ value }) => value ? JSON.parse(value) : []),
       switchMap((storedPOIIds: any[]) =>
         this.fetchPOIs(url).pipe(
-          map(elements => elements.filter((element: any) => !storedPOIIds.includes(element.id))),
           tap(newPOIs => this.addPOIsToMap(tileMap, newPOIs)),
+          map(elements => elements.filter((element: any) => !storedPOIIds.includes(element.id))),
+          tap((elements) => {
+            if (elements.length > 0) {
+              this.notificationService.sendPOINotification(elements.length);
+            }
+          }),
           switchMap(newPOIs => from(Storage.set({
             key: 'poiIds',
             value: JSON.stringify([...new Set([...storedPOIIds, ...newPOIs.map(poi => poi.id)])])
@@ -132,11 +137,7 @@ export class NavigationService {
         console.error('Error fetching nature POIs:', error);
         return [];
       })
-    ).subscribe(() => {
-      if (this.poiMarkers.length > 0) {
-        this.notificationService.sendPOINotification(this.poiMarkers.length);
-      }
-    });
+    ).subscribe();
   }
 
   private fetchPOIs(url: string): Observable<any[]> {
