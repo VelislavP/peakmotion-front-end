@@ -24,7 +24,6 @@ export class NavigationService {
 
   position$: Subject<CoordinatesPosition> = new Subject<CoordinatesPosition>();
   private overpassUrl = 'https://overpass-api.de/api/interpreter';
-  private MAP_STATE_KEY = "mapState";
 
   constructor(private http: HttpClient, private notificationService: NotificationService) { }
 
