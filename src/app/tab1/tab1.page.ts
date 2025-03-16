@@ -8,6 +8,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationService } from '../services/navigation.service';
 import { CoordinatesPosition } from '../models/coordinates-position.model';
 import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Storage } from '@capacitor/storage'; // Ensure this is correct
 
 @Component({
   selector: 'app-tab1',
@@ -32,12 +33,26 @@ export class Tab1Page implements AfterViewInit {
     enableHighAccuracy: true
   };
 
+  poiCount$ = this.navigationService.visitedObjects$;
+
   manualOverride: boolean = true;
   manualLocation: BehaviorSubject<CoordinatesPosition | null> = new BehaviorSubject<CoordinatesPosition | null>(null);
 
   mapProcessing = true;
 
   constructor(public http: HttpClient, public plt: Platform, private navigationService: NavigationService) { }
+
+  async ngOnInit() {
+    await this.loadPOICount();
+  }
+
+  // Fetch poiCount from storage
+  async loadPOICount() {
+    const { value } = await Storage.get({ key: 'poiCount' });
+    console.log('==============')
+    console.log(value)
+    this.poiCount$.next(value ? parseInt(value, 10) : 0);  // Parse value or default to 0
+  }
 
   destroyRef = inject(DestroyRef);
   private MAP_STATE_KEY = "mapState";
