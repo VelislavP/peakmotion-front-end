@@ -1,7 +1,7 @@
 import { DestroyRef, inject, Injectable } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Geolocation } from '@capacitor/geolocation';
-import { catchError, combineLatest, distinctUntilChanged, elementAt, from, interval, map, Observable, of, startWith, Subject, switchMap, take, tap, withLatestFrom } from 'rxjs';
+import { BehaviorSubject, catchError, combineLatest, distinctUntilChanged, elementAt, from, interval, map, Observable, of, startWith, Subject, switchMap, take, tap, withLatestFrom } from 'rxjs';
 import { icon, Map, marker, Marker } from 'leaflet';
 import { CoordinatesPosition } from '../models/coordinates-position.model';
 import { HttpClient } from '@angular/common/http';
@@ -25,6 +25,7 @@ export class NavigationService {
   private poiMarkers: Marker[] = [];
   private POI_IDS_KEY = "poiIds";
   private intervalId: any;
+  visitedObjects$ = new BehaviorSubject<number>(0);
 
   position$: Subject<CoordinatesPosition> = new Subject<CoordinatesPosition>();
   private overpassUrl = 'https://overpass-api.de/api/interpreter';
@@ -105,13 +106,13 @@ export class NavigationService {
     const query = `
       [out:json];
       (
-        node["leisure"="park"](around:5000, ${latitude}, ${longitude});
-        node["natural"="wood"](around:5000, ${latitude}, ${longitude});
-        node["tourism"="camp_site"](around:5000, ${latitude}, ${longitude});
-        node["boundary"="national_park"](around:5000, ${latitude}, ${longitude});
-        node["route"="hiking"](around:5000, ${latitude}, ${longitude});
-        node["natural"="water"](around:5000, ${latitude}, ${longitude});
-        node["natural"="peak"](around:5000, ${latitude}, ${longitude});
+        node["leisure"="park"](around:1000, ${latitude}, ${longitude});
+        node["natural"="wood"](around:1000, ${latitude}, ${longitude});
+        node["tourism"="camp_site"](around:1000, ${latitude}, ${longitude});
+        node["boundary"="national_park"](around:000, ${latitude}, ${longitude});
+        node["route"="hiking"](around:1000, ${latitude}, ${longitude});
+        node["natural"="water"](around:1000, ${latitude}, ${longitude});
+        node["natural"="peak"](around:1000, ${latitude}, ${longitude});
       );
       out body;
     `;
@@ -145,8 +146,13 @@ export class NavigationService {
           map((elements) =>
             elements.filter((element: any) => !storedPOIIds.includes(element.id))
           ),
-          tap((elements) => {
+          tap(async (elements) => {
             if (elements.length > 0) {
+              this.visitedObjects$.next(this.visitedObjects$.getValue() + elements.length);
+
+              console.log(this.visitedObjects$.getValue().toString());
+              await Storage.set({ key: 'poiCount', value: this.visitedObjects$.getValue().toString() });
+  
               this.notificationService.sendPOINotification(elements.length);
             }
           }),
@@ -190,9 +196,7 @@ export class NavigationService {
     );
   }
 
-  private addPOIsToMap(map: Map, newPOIs: any[]): void {
-    console.log(newPOIs);
-
+  private async addPOIsToMap(map: Map, newPOIs: any[]): Promise<void> {
     newPOIs.forEach(element => {
       const tag = element.tags.natural || element.tags.leisure || element.tags.tourism;
       const iconUrl = this.getIconForType(tag);

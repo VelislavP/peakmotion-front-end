@@ -3,6 +3,9 @@
     <ion-title>
       Monti
     </ion-title>
+    <ion-buttons slot="end">
+      <ion-badge color="primary">{{ poiCount$ | async }}</ion-badge>
+    </ion-buttons>
   </ion-toolbar>
 </ion-header>
 
