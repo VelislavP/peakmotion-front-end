@@ -1,5 +1,7 @@
 import { Component } from '@angular/core';
 import { PhotoService } from '../services/photo.service.service';
+import { ModalController } from '@ionic/angular';
+import { PhotoModalComponent } from './components/photo-modal/photo-modal.component';
 
 @Component({
   selector: 'app-tab3',
@@ -16,7 +18,7 @@ export class Tab3Page {
   titleEn: string = '';
   description: string = '';
 
-  constructor(private photoService: PhotoService) {}
+  constructor(private photoService: PhotoService, private modalController: ModalController) {}
 
   async captureAndUploadPhoto() {
     try {
@@ -26,7 +28,7 @@ export class Tab3Page {
       this.capturedPhoto = 'data:image/jpeg;base64,' + photo.base64String;
 
       this.photoService.uploadPhoto(photo).subscribe({
-        next: (response) => {
+        next: async (response) => {
           const parsedResponse = JSON.parse(response)
           this.uploadSuccess = true;
           this.uploadResponse = "Your plant photo has been uploaded and identified!";
@@ -34,6 +36,7 @@ export class Tab3Page {
           this.titleEn = parsedResponse.titleEn || 'No Name Available';
           this.description = parsedResponse.description || 'No description found.';
           this.isUploading = false;
+          await this.presentModal();
         },
         error: (error) => {
           console.log(error)
@@ -47,6 +50,20 @@ export class Tab3Page {
       this.uploadResponse = 'Failed to capture photo!';
       this.isUploading = false;
     }
+  }
+
+  async presentModal() {
+    const modal = await this.modalController.create({
+      component: PhotoModalComponent,
+      componentProps: {
+        titleLatin: this.titleLatin,
+        titleEn: this.titleEn,
+        capturedPhoto: this.capturedPhoto,
+        description: this.description,
+        onReset: () => this.resetAndCapturePhoto()
+      },
+    });
+    return await modal.present();
   }
 
   resetAndCapturePhoto() {
