@@ -7,7 +7,7 @@ import { Observable } from 'rxjs';
   providedIn: 'root'
 })
 export class PhotoService {
-  private apiUrl = 'http://127.0.0.1:8000/classify';
+  private apiUrl = 'http://ec2-18-199-165-169.eu-central-1.compute.amazonaws.com:8099/classify';
 
   constructor(private http: HttpClient) {}
 
