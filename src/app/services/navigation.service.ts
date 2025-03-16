@@ -109,7 +109,7 @@ export class NavigationService {
         node["leisure"="park"](around:1000, ${latitude}, ${longitude});
         node["natural"="wood"](around:1000, ${latitude}, ${longitude});
         node["tourism"="camp_site"](around:1000, ${latitude}, ${longitude});
-        node["boundary"="national_park"](around:000, ${latitude}, ${longitude});
+        node["boundary"="national_park"](around:1000, ${latitude}, ${longitude});
         node["route"="hiking"](around:1000, ${latitude}, ${longitude});
         node["natural"="water"](around:1000, ${latitude}, ${longitude});
         node["natural"="peak"](around:1000, ${latitude}, ${longitude});
@@ -152,7 +152,7 @@ export class NavigationService {
 
               console.log(this.visitedObjects$.getValue().toString());
               await Storage.set({ key: 'poiCount', value: this.visitedObjects$.getValue().toString() });
-  
+
               this.notificationService.sendPOINotification(elements.length);
             }
           }),
